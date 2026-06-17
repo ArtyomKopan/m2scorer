@@ -30,9 +30,11 @@
 #
 
 import sys
+import levenshtein
 from getopt import getopt
 from util import paragraphs
 from util import smart_open
+
 
 
 def load_annotation(gold_file):
@@ -41,7 +43,7 @@ def load_annotation(gold_file):
     fgold = smart_open(gold_file, 'r')
     puffer = fgold.read()
     fgold.close()
-    puffer = puffer.decode('utf8')
+    puffer = puffer
     for item in paragraphs(puffer.splitlines(True)):
         item = item.splitlines(False)
         sentence = [line[2:].strip() for line in item if line.startswith('S ')]
@@ -59,7 +61,7 @@ def load_annotation(gold_file):
             if etype == 'noop':
                 start_offset = -1
                 end_offset = -1
-            corrections = [c.strip() if c != '-NONE-' else '' for c in fields[2].split('||')]
+            corrections =  [c.strip() if c != '-NONE-' else '' for c in fields[2].split('||')]
             # NOTE: start and end are *token* offsets
             original = ' '.join(' '.join(sentence).split()[start_offset:end_offset])
             annotator = int(fields[5])
@@ -72,30 +74,29 @@ def load_annotation(gold_file):
             source_sentences.append(this_sentence)
             this_edits = {}
             for annotator, annotation in annotations.items():
-                this_edits[annotator] = [edit for edit in annotation if
-                                         tok_offset >= edit[0] >= 0 and edit[1] <= tok_offset and edit[
-                                             1] >= 0]
+                this_edits[annotator] = [edit for edit in annotation if edit[0] <= tok_offset and edit[1] <= tok_offset and edit[0] >= 0 and edit[1] >= 0]
             if len(this_edits) == 0:
                 this_edits[0] = []
             gold_edits.append(this_edits)
-    return source_sentences, gold_edits
+    return (source_sentences, gold_edits)
 
 
 def print_usage():
-    pass
-    # print >> sys.stderr, "Usage: m2scorer.py [OPTIONS] proposed_sentences gold_source"
-    # print >> sys.stderr, "where"
-    # print >> sys.stderr, "  proposed_sentences   -   system output, sentence per line"
-    # print >> sys.stderr, "  source_gold          -   source sentences with gold token edits"
-    # print >> sys.stderr, "OPTIONS"
-    # print >> sys.stderr, "  -v    --verbose                   -  print verbose output"
-    # print >> sys.stderr, "        --very_verbose              -  print lots of verbose output"
-    # print >> sys.stderr, "        --max_unchanged_words N     -  Maximum unchanged words when extraction edit. Default 2."
-    # print >> sys.stderr, "        --ignore_whitespace_casing  -  Ignore edits that only affect whitespace and caseing. Default no."
+    print("Usage: m2scorer.py [OPTIONS] proposed_sentences gold_source", file=sys.stderr)
+    print("where", file=sys.stderr)
+    print("  proposed_sentences   -   system output, sentence per line", file=sys.stderr)
+    print("  source_gold          -   source sentences with gold token edits", file=sys.stderr)
+    print("OPTIONS", file=sys.stderr)
+    print("  -v    --verbose                   -  print verbose output", file=sys.stderr)
+    print("        --very_verbose              -  print lots of verbose output", file=sys.stderr)
+    print("        --max_unchanged_words N     -  Maximum unchanged words when extraction edit. Default 2.", file=sys.stderr)
+    print("        --beta B                    -  Beta value for F-measure. Default 0.5.", file=sys.stderr)
+    print("        --ignore_whitespace_casing  -  Ignore edits that only affect whitespace and caseing. Default no.", file=sys.stderr)
 
 
-max_unchanged_words = 2
-ignore_whitespace_casing = False
+
+max_unchanged_words=2
+ignore_whitespace_casing= False
 verbose = False
 very_verbose = False
 opts, args = getopt(sys.argv[1:], "v", ["max_unchanged_words=", "verbose", "ignore_whitespace_casing", "very_verbose"])
@@ -112,3 +113,4 @@ for o, v in opts:
         print("Unknown option :", o)
         print_usage()
         sys.exit(-1)
+        
